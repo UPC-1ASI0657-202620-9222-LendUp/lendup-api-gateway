@@ -1,0 +1,60 @@
+server:
+  port: ${SERVER_PORT:8090}
+spring:
+  application:
+    name: lendup-api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:2000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:20s}
+          # Los servicios también responden CORS; se deja una sola copia de cada cabecera.
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Vary X-Correlation-ID, RETAIN_FIRST
+          globalcors:
+            cors-configurations:
+              '[/api/**]':
+                allowed-origin-patterns: ${CORS_ORIGINS:http://localhost:5173}
+                allowed-methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+                allowed-headers: [Authorization, Content-Type, X-Correlation-ID, Idempotency-Key]
+                exposed-headers: [X-Correlation-ID]
+                max-age: 3600
+          # El orden importa: gana la primera ruta que coincide.
+          routes:
+            - id: payments-loan-transactions
+              uri: ${PAYMENTS_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/prestamos/{id}/transacciones
+            - id: payments
+              uri: ${PAYMENTS_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/medios-pago,/api/v1/pagos,/api/v1/pagos/**,/api/v1/garantias,/api/v1/garantias/**,/api/v1/webhooks/mercado-pago
+            - id: notifications
+              uri: ${NOTIFICATIONS_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/notificaciones,/api/v1/notificaciones/**
+            - id: reservations
+              uri: ${RESERVATIONS_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/solicitudes,/api/v1/solicitudes/**,/api/v1/reservas,/api/v1/reservas/**
+            # Catálogo y Reputación (servicios de otros equipos): sin su variable siguen yendo al monolito.
+            - id: catalog
+              uri: ${CATALOG_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
+              predicates:
+                - Path=/api/v1/catalogo,/api/v1/catalogo/**
+            - id: reputation
+              uri: ${REPUTATION_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
+              predicates:
+                - Path=/api/v1/prestamos/{id}/calificaciones,/api/v1/estudiantes/{id}/reputacion
+            # Todo lo demás (Identidad, Préstamos, Evidencias y las rutas de Catálogo del Sprint 1) sigue en el monolito.
+            - id: monolith
+              uri: ${MONOLITH_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/v1/**
+management:
+  endpoints.web.exposure.include: health
+  endpoint.health:
+    probes.enabled: true
+    show-details: never

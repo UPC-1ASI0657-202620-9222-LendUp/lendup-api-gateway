@@ -1,0 +1,15 @@
+name: lendup-api-gateway
+services:
+  gateway:
+    build: .
+    env_file: .env
+    ports: ["${SERVER_PORT:-8090}:8090"]
+    environment:
+      SERVER_PORT: 8090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
