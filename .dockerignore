@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+.m2-cache
+.maven-home
+target
+docs
+README.md
+compose.yaml
