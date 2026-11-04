@@ -39,16 +39,23 @@ spring:
               uri: ${RESERVATIONS_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/solicitudes,/api/v1/solicitudes/**,/api/v1/reservas,/api/v1/reservas/**
-            # Catálogo y Reputación (servicios de otros equipos): sin su variable siguen yendo al monolito.
+            # Catálogo: configurar CATALOG_SERVICE_URL para sacar /catalogo del monolito.
             - id: catalog
               uri: ${CATALOG_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
               predicates:
                 - Path=/api/v1/catalogo,/api/v1/catalogo/**
+            # Reputación DEBE preceder a la ruta general de estudiantes de Identidad.
             - id: reputation
               uri: ${REPUTATION_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
               predicates:
                 - Path=/api/v1/prestamos/{id}/calificaciones,/api/v1/estudiantes/{id}/reputacion
-            # Todo lo demás (Identidad, Préstamos, Evidencias y las rutas de Catálogo del Sprint 1) sigue en el monolito.
+            # Identidad conserva las rutas de los controladores NestJS sin StripPrefix.
+            # Sin IDENTITY_SERVICE_URL se mantiene el fallback al monolito durante la migración.
+            - id: identity
+              uri: ${IDENTITY_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
+              predicates:
+                - Path=/api/v1/estudiantes,/api/v1/estudiantes/**,/api/v1/universidades,/api/v1/universidades/**,/api/v1/documentos/terminos
+            # Préstamos, Evidencias y /objetos de Sprint 1 siguen en el monolito.
             - id: monolith
               uri: ${MONOLITH_URL:http://localhost:8080}
               predicates:
