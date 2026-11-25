@@ -1,6 +1,7 @@
 package com.lendup.gateway.config;
 
 import java.net.ConnectException;
+import java.net.NoRouteToHostException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -30,10 +31,10 @@ public class UnavailableServiceHandler implements WebExceptionHandler {
     return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
   }
 
-  /** Refused connection, or a service name that does not resolve (in Docker, a stopped container). */
+  /** Refused connection, an address nobody holds any more, or a name that does not resolve (a stopped container). */
   private static boolean isConnectionFailure(Throwable error) {
     for (Throwable current = error; current != null; current = current.getCause()) {
-      if (current instanceof ConnectException || current instanceof UnknownHostException) return true;
+      if (current instanceof ConnectException || current instanceof NoRouteToHostException || current instanceof UnknownHostException) return true;
     }
     return false;
   }
