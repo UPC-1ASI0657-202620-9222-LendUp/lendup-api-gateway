@@ -1,6 +1,6 @@
 # LendUp API Gateway
 
-Punto de entrada único de la aplicación web de LendUp (R14). Es un Spring Cloud Gateway (Java 21 · Spring Boot 4) que envía cada ruta `/api/v1/**` al servicio que la atiende en el Sprint 2: el monolito, `lendup-reservations-service`, `lendup-payments-service`, `lendup-notifications-service`, `lendup-catalog-service` o `lendup-reputation-service`.
+Punto de entrada único de la aplicación web de LendUp (R14). Es un Spring Cloud Gateway (Java 21 · Spring Boot 4) que envía cada ruta `/api/v1/**` al servicio que la atiende en el Sprint 2: el monolito, `lendup-reservations-service`, `lendup-payments-service`, `lendup-notifications-service`, `lendup-catalog-service`, `lendup-identity-service` o `lendup-reputation-service`.
 
 ## Qué hace y qué no
 
@@ -15,7 +15,7 @@ Tabla de rutas y decisiones: [docs/routes.md](docs/routes.md). Despliegue: [docs
 
 ## Inicio local
 
-Requisitos: JDK 21 (o Docker). Los servicios deben estar levantados en sus puertos: monolito 8080, Reservas 8081, Pagos 8082 y Notificaciones 8083.
+Requisitos: JDK 21 (o Docker). Los servicios del monolito y de otros equipos pueden seguir levantados en 8080 (monolito), 8081 (Reservas), 8082 (Pagos) y 8083 (Notificaciones). Identidad y Catálogo pueden usar los puertos **de host** 8085 y 8084, respectivamente, para evitar conflictos.
 
 ```powershell
 .\mvnw.cmd clean verify
@@ -28,8 +28,13 @@ Con Docker:
 
 ```powershell
 Copy-Item .env.example .env
+# Activar en .env las URLs de los microservicios si ya están levantados:
+# IDENTITY_SERVICE_URL=http://host.docker.internal:8085
+# CATALOG_SERVICE_URL=http://host.docker.internal:8084
 docker compose up --build
 ```
+
+El Gateway mantiene el fallback al monolito para Identidad/Catálogo cuando sus URLs no se han configurado. Para enrutar a los nuevos servicios, establecer **ambas** variables en `.env` o en la task definition de AWS. La ruta de Reputación tiene prioridad sobre la de Identidad. `GET /api/v1/objetos` sigue en el monolito. Consulta [las rutas y los contratos](docs/routes.md).
 
 ## Imagen
 

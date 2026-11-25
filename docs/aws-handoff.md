@@ -7,9 +7,10 @@ Imagen: `DOCKERHUB_USERNAME/lendup-api-gateway:<semver|sha>`, para `linux/amd64`
 ## Configuración
 
 - **Obligatorias:** `CORS_ORIGINS` (dominio del frontend en HTTPS), `MONOLITH_URL`, `RESERVATIONS_SERVICE_URL`, `PAYMENTS_SERVICE_URL` y `NOTIFICATIONS_SERVICE_URL`. Las URLs son internas de la VPC; por ejemplo, el DNS de Cloud Map o un ALB interno.
+- **Obligatorias para habilitar los microservicios extraídos:** `IDENTITY_SERVICE_URL` (Identidad NestJS, puerto interno 8081) y `CATALOG_SERVICE_URL` (Catálogo .NET, puerto interno 8082). Utilizar DNS privado/ALB interno, **sin** `/api/v1` en la URL de destino. Si falta alguna, sus rutas siguen en el monolito.
 - **Opcionales:** `SERVER_PORT=8090`, `GATEWAY_CONNECT_TIMEOUT_MS=2000` y `GATEWAY_RESPONSE_TIMEOUT=20s`.
 
-El gateway no maneja secretos.
+El gateway no maneja secretos. Los tokens Firebase del cliente se reenvían al microservicio correspondiente para que **éste** los verifique. La ruta de Reputación precede a la de Identidad para reservar `/api/v1/estudiantes/{id}/reputacion`. Catálogo se comunica directamente con Identidad usando **otra** variable (`IDENTITY_BASE_URL`) y requiere HTTPS válido en producción; configurar este endpoint privado TLS en la tarea de Catálogo.
 
 ## Red
 
@@ -21,7 +22,7 @@ El gateway no maneja secretos.
 
 1. Desplegar primero los servicios destino y comprobar su readiness.
 2. Desplegar el gateway y comprobar su readiness.
-3. Hacer una llamada por ruta (ver `docs/routes.md`).
-4. Cambiar `VITE_API_GATEWAY_URL` en el frontend.
+3. Hacer una llamada por ruta (ver `docs/routes.md`): `GET /api/v1/universidades`, `GET /api/v1/documentos/terminos`, `GET /api/v1/estudiantes/me` sin/con token, `GET /api/v1/catalogo/categorias` y una escritura autenticada de publicación. Verificar que Reputación no se desvíe a Identidad.
+4. Cambiar `VITE_API_GATEWAY_URL` en el frontend. No publicar los puertos de los microservicios directamente en internet.
 
 **Rollback:** volver al digest anterior de la imagen. El gateway no guarda estado.

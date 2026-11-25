@@ -26,9 +26,12 @@ class GatewayRoutingTest {
   static final Map<String, WireMockServer> BACKENDS = Map.of(
       "monolith", new WireMockServer(options().dynamicPort()),
       "reservations", new WireMockServer(options().dynamicPort()),
+      "loans", new WireMockServer(options().dynamicPort()),
       "payments", new WireMockServer(options().dynamicPort()),
       "notifications", new WireMockServer(options().dynamicPort()),
       "catalog", new WireMockServer(options().dynamicPort()),
+      "identity", new WireMockServer(options().dynamicPort()),
+      "evidence", new WireMockServer(options().dynamicPort()),
       "reputation", new WireMockServer(options().dynamicPort()));
 
   static {
@@ -39,9 +42,12 @@ class GatewayRoutingTest {
   static void backends(DynamicPropertyRegistry registry) {
     registry.add("MONOLITH_URL", () -> BACKENDS.get("monolith").baseUrl());
     registry.add("RESERVATIONS_SERVICE_URL", () -> BACKENDS.get("reservations").baseUrl());
+    registry.add("LOANS_SERVICE_URL", () -> BACKENDS.get("loans").baseUrl());
     registry.add("PAYMENTS_SERVICE_URL", () -> BACKENDS.get("payments").baseUrl());
     registry.add("NOTIFICATIONS_SERVICE_URL", () -> BACKENDS.get("notifications").baseUrl());
     registry.add("CATALOG_SERVICE_URL", () -> BACKENDS.get("catalog").baseUrl());
+    registry.add("IDENTITY_SERVICE_URL", () -> BACKENDS.get("identity").baseUrl());
+    registry.add("EVIDENCE_SERVICE_URL", () -> BACKENDS.get("evidence").baseUrl());
     registry.add("REPUTATION_SERVICE_URL", () -> BACKENDS.get("reputation").baseUrl());
   }
 
@@ -66,22 +72,49 @@ class GatewayRoutingTest {
       "POST,   /api/v1/pagos,                               payments",
       "POST,   /api/v1/garantias,                           payments",
       "GET,    /api/v1/prestamos/c3333333/transacciones,    payments",
+      "GET,    /api/v1/prestamos/c3333333/desglose-pago,    payments",
       "POST,   /api/v1/webhooks/mercado-pago,               payments",
       "GET,    /api/v1/notificaciones,                      notifications",
       "PATCH,  /api/v1/notificaciones/9b1d2c3e,             notifications",
       "POST,   /api/v1/solicitudes,                         reservations",
       "POST,   /api/v1/solicitudes/abc/aceptacion,          reservations",
       "GET,    /api/v1/reservas,                            reservations",
+      "GET,    /api/v1/catalogo,                            catalog",
+      "GET,    /api/v1/catalogo/categorias,                 catalog",
       "GET,    /api/v1/catalogo/publicaciones,              catalog",
+      "GET,    /api/v1/catalogo/mis-publicaciones,          catalog",
+      "POST,   /api/v1/catalogo/publicaciones,              catalog",
       "PATCH,  /api/v1/catalogo/publicaciones/p1/estado,    catalog",
       "POST,   /api/v1/prestamos/c3333333/calificaciones,   reputation",
       "GET,    /api/v1/estudiantes/u1/reputacion,           reputation",
-      "GET,    /api/v1/estudiantes/u1,                      monolith",
-      "GET,    /api/v1/prestamos/c3333333,                  monolith",
-      "POST,   /api/v1/prestamos/c3333333/entrega,          monolith",
-      "GET,    /api/v1/estudiantes/me,                      monolith",
-      "GET,    /api/v1/objetos,                             monolith",
-      "POST,   /api/v1/incidencias,                         monolith"
+      "POST,   /api/v1/estudiantes,                          identity",
+      "GET,    /api/v1/estudiantes/me,                       identity",
+      "PUT,    /api/v1/estudiantes/me,                       identity",
+      "POST,   /api/v1/estudiantes/me/verificacion,         identity",
+      "POST,   /api/v1/estudiantes/me/aceptacion-terminos,  identity",
+      "GET,    /api/v1/estudiantes/u1,                       identity",
+      "GET,    /api/v1/universidades,                        identity",
+      "GET,    /api/v1/documentos/terminos,                 identity",
+      "GET,    /api/v1/prestamos,                           loans",
+      "GET,    /api/v1/prestamos/c3333333,                  loans",
+      "POST,   /api/v1/prestamos/c3333333/entrega,          loans",
+      "POST,   /api/v1/prestamos/c3333333/recepcion,        loans",
+      "POST,   /api/v1/prestamos/c3333333/extensiones,      loans",
+      "POST,   /api/v1/prestamos/c3333333/extensiones/e1/respuesta, loans",
+      "POST,   /api/v1/prestamos/c3333333/reprogramaciones, loans",
+      "POST,   /api/v1/prestamos/c3333333/devolucion,       loans",
+      "POST,   /api/v1/prestamos/c3333333/confirmacion-devolucion, loans",
+      "GET,    /api/v1/prestamos/c3333333/cambios-fecha,    loans",
+      "GET,    /api/v1/prestamos/c3333333/cotizacion-pago,  loans",
+      "GET,    /api/v1/calendario,                          loans",
+      "POST,   /api/v1/prestamos/c3333333/evidencias,       evidence",
+      "POST,   /api/v1/prestamos/c3333333/analisis-evidencias, evidence",
+      "POST,   /api/v1/incidencias,                         evidence",
+      "GET,    /api/v1/incidencias/i1,                      evidence",
+      "POST,   /api/v1/incidencias/i1/descargo,             evidence",
+      "GET,    /api/v1/admin/incidencias,                   evidence",
+      "POST,   /api/v1/admin/incidencias/i1/resolucion,     evidence",
+      "GET,    /api/v1/objetos,                             monolith"
   })
   void routesEachPathToItsService(String method, String path, String backend) {
     client.method(HttpMethod.valueOf(method)).uri(path).contentType(MediaType.APPLICATION_JSON).bodyValue("{}")
@@ -100,6 +133,38 @@ class GatewayRoutingTest {
     BACKENDS.get("notifications").verify(getRequestedFor(urlPathEqualTo("/api/v1/notificaciones"))
         .withHeader("Authorization", equalTo("Bearer token-123"))
         .withHeader("X-Correlation-ID", matching("[0-9a-f-]{36}")));
+  }
+
+  @Test
+  void forwardsFirebaseTokenAndQueryToIdentityWithoutRewritingPath() {
+    client.get().uri("/api/v1/estudiantes/me?fuente=frontend")
+        .header(HttpHeaders.AUTHORIZATION, "Bearer firebase-id-token")
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody().jsonPath("$.backend").isEqualTo("identity");
+    BACKENDS.get("identity").verify(getRequestedFor(urlPathEqualTo("/api/v1/estudiantes/me"))
+        .withHeader("Authorization", equalTo("Bearer firebase-id-token"))
+        .withQueryParam("fuente", equalTo("frontend")));
+  }
+
+  @Test
+  void forwardsCatalogMultipartAuthorizationAndBodyWithoutRewriting() {
+    String boundary = "lendup-boundary";
+    String multipart = "--" + boundary + "\r\n"
+        + "Content-Disposition: form-data; name=\"file\"; filename=\"imagen.jpg\"\r\n"
+        + "Content-Type: image/jpeg\r\n\r\n"
+        + "fake-image-data\r\n--" + boundary + "--\r\n";
+    client.post().uri("/api/v1/catalogo/publicaciones/p1/imagenes")
+        .header(HttpHeaders.AUTHORIZATION, "Bearer firebase-id-token")
+        .contentType(MediaType.parseMediaType("multipart/form-data; boundary=" + boundary))
+        .bodyValue(multipart)
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody().jsonPath("$.backend").isEqualTo("catalog");
+    BACKENDS.get("catalog").verify(postRequestedFor(urlPathEqualTo("/api/v1/catalogo/publicaciones/p1/imagenes"))
+        .withHeader("Authorization", equalTo("Bearer firebase-id-token"))
+        .withHeader("Content-Type", containing("multipart/form-data"))
+        .withRequestBody(containing("fake-image-data")));
   }
 
   @Test
