@@ -26,7 +26,7 @@ spring:
             - id: payments-loan-transactions
               uri: ${PAYMENTS_SERVICE_URL:http://localhost:8082}
               predicates:
-                - Path=/api/v1/prestamos/{id}/transacciones
+                - Path=/api/v1/prestamos/{id}/transacciones,/api/v1/prestamos/{id}/desglose-pago
             - id: payments
               uri: ${PAYMENTS_SERVICE_URL:http://localhost:8082}
               predicates:
@@ -55,7 +55,19 @@ spring:
               uri: ${IDENTITY_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
               predicates:
                 - Path=/api/v1/estudiantes,/api/v1/estudiantes/**,/api/v1/universidades,/api/v1/universidades/**,/api/v1/documentos/terminos
-            # Préstamos, Evidencias y /objetos de Sprint 1 siguen en el monolito.
+            # Evidencias: sus rutas bajo /prestamos DEBEN preceder a la general de Préstamos. Sin EVIDENCE_SERVICE_URL
+            # siguen en el monolito hasta que exista su microservicio.
+            - id: evidence
+              uri: ${EVIDENCE_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
+              predicates:
+                - Path=/api/v1/prestamos/{id}/evidencias,/api/v1/prestamos/{id}/analisis-evidencias,/api/v1/incidencias,/api/v1/incidencias/**,/api/v1/admin/incidencias,/api/v1/admin/incidencias/**
+            # Préstamos va después de las rutas específicas de Pagos, Reputación y Evidencias.
+            # Sin LOANS_SERVICE_URL se mantiene el fallback al monolito durante la migración.
+            - id: loans
+              uri: ${LOANS_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
+              predicates:
+                - Path=/api/v1/prestamos,/api/v1/prestamos/**,/api/v1/calendario
+            # /objetos de Sprint 1 y cualquier ruta sin microservicio siguen en el monolito.
             - id: monolith
               uri: ${MONOLITH_URL:http://localhost:8080}
               predicates:
