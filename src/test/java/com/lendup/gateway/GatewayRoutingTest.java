@@ -109,6 +109,7 @@ class GatewayRoutingTest {
       "GET,    /api/v1/calendario,                          loans",
       "POST,   /api/v1/prestamos/c3333333/evidencias,       evidence",
       "POST,   /api/v1/prestamos/c3333333/analisis-evidencias, evidence",
+      "GET,    /api/v1/prestamos/c3333333/analisis-evidencias/a1, evidence",
       "POST,   /api/v1/incidencias,                         evidence",
       "GET,    /api/v1/incidencias/i1,                      evidence",
       "POST,   /api/v1/incidencias/i1/descargo,             evidence",
