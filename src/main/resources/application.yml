@@ -60,7 +60,7 @@ spring:
             - id: evidence
               uri: ${EVIDENCE_SERVICE_URL:${MONOLITH_URL:http://localhost:8080}}
               predicates:
-                - Path=/api/v1/prestamos/{id}/evidencias,/api/v1/prestamos/{id}/analisis-evidencias,/api/v1/incidencias,/api/v1/incidencias/**,/api/v1/admin/incidencias,/api/v1/admin/incidencias/**
+                - Path=/api/v1/prestamos/{id}/evidencias,/api/v1/prestamos/{id}/analisis-evidencias,/api/v1/prestamos/{id}/analisis-evidencias/{analisisId},/api/v1/incidencias,/api/v1/incidencias/**,/api/v1/admin/incidencias,/api/v1/admin/incidencias/**
             # Préstamos va después de las rutas específicas de Pagos, Reputación y Evidencias.
             # Sin LOANS_SERVICE_URL se mantiene el fallback al monolito durante la migración.
             - id: loans
